@@ -9,6 +9,13 @@ type RouteContext = {
   }>;
 };
 
+type RedFlagResponseItem = {
+  id: string;
+  type: string;
+  severity: string;
+  description: string;
+};
+
 function decimalToString(value: { toString(): string } | null) {
   return value ? value.toString() : null;
 }
@@ -61,7 +68,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
             hype_score: project.score.hype_score,
           }
         : null,
-      redflags: project.red_flags.map((flag) => ({
+      redflags: project.red_flags.map((flag: RedFlagResponseItem) => ({
         id: flag.id,
         type: flag.type,
         severity: flag.severity,

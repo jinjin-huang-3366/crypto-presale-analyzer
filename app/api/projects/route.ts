@@ -18,7 +18,7 @@ export async function GET() {
       },
     });
 
-    const data = projects.map((project) => ({
+    const data = projects.map((project: (typeof projects)[number]) => ({
       id: project.id,
       name: project.name,
       slug: project.slug,

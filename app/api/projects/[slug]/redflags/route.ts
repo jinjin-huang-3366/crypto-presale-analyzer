@@ -9,6 +9,13 @@ type RouteContext = {
   }>;
 };
 
+type RedFlagResponseItem = {
+  id: string;
+  type: string;
+  severity: string;
+  description: string;
+};
+
 export async function GET(_request: Request, { params }: RouteContext) {
   const { slug } = await params;
 
@@ -31,7 +38,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({
       project_id: project.id,
       slug: project.slug,
-      redflags: project.red_flags.map((flag) => ({
+      redflags: project.red_flags.map((flag: RedFlagResponseItem) => ({
         id: flag.id,
         type: flag.type,
         severity: flag.severity,

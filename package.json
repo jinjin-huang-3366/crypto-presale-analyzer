@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -11,8 +12,9 @@
     "test:smoke:prod": "node scripts/smoke-test.mjs",
     "vercel:pull": "npx vercel pull --yes --environment=production",
     "vercel:build": "npx vercel build --prod",
-    "vercel:deploy": "npx vercel deploy --prebuilt --prod",
+    "vercel:deploy": "npx vercel deploy --prod --yes",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "score:projects": "tsx scripts/score-projects.ts",
     "redflags:projects": "tsx scripts/redflags-projects.ts",

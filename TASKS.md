@@ -164,7 +164,7 @@ Folders:
 * [x] add smoke test script (`scripts/smoke-test.mjs`)
 * [x] add Vercel deploy scripts (`vercel:pull`, `vercel:build`, `vercel:deploy`)
 * [x] add deployment runbook (`README.md`)
-* [ ] deploy to Vercel
+* [x] deploy to Vercel
 * [ ] connect DB
 * [ ] test API
 * [ ] test UI
@@ -214,7 +214,6 @@ Always:
 ## after dev and mvp
 
 * use openclaw for promoting in all channels
-
 
 
 
