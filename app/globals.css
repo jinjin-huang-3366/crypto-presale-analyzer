@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  --background: #070f1f;
+  --foreground: #dbe8ff;
+  --surface: #0f1b33;
+  --surface-muted: #101f3a;
+  --surface-strong: #14284a;
+  --border: #243a61;
+  --accent: #36d6ff;
+  --accent-2: #4f7dff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-weight: 450;
+  line-height: 1.45;
+  background-image:
+    radial-gradient(circle at 8% 8%, rgba(45, 131, 255, 0.25) 0, transparent 30%),
+    radial-gradient(circle at 88% 2%, rgba(50, 214, 255, 0.18) 0, transparent 36%),
+    linear-gradient(180deg, #0a152a 0%, #070f1f 32%, #060d1b 100%);
+}
+
+::selection {
+  background: rgba(79, 125, 255, 0.35);
+  color: #eff6ff;
+}
+
+.surface-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(16, 31, 58, 0.95), rgba(12, 24, 46, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(122, 167, 255, 0.08),
+    0 14px 28px rgba(1, 7, 17, 0.35);
+}
+
+.surface-card-soft {
+  border: 1px solid rgba(53, 76, 121, 0.9);
+  background: rgba(14, 28, 51, 0.75);
+}
+
+.metric-tile {
+  border: 1px solid rgba(53, 76, 121, 0.85);
+  background: rgba(19, 37, 67, 0.75);
+}
+
+.text-muted {
+  color: #bfd1f2;
+}
+
+.text-faint {
+  color: #a4bce4;
+}
+
+.btn-primary {
+  border: 1px solid rgba(90, 141, 255, 0.7);
+  background: linear-gradient(180deg, #4f7dff 0%, #2f5cf0 100%);
+  color: #ecf2ff;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.btn-ghost {
+  border: 1px solid rgba(73, 98, 145, 0.95);
+  background: rgba(14, 29, 54, 0.55);
+  color: #d6e5ff;
+}
+
+.btn-ghost:hover {
+  background: rgba(24, 43, 73, 0.8);
+}
+
+.tag-accent {
+  border: 1px solid rgba(58, 214, 255, 0.45);
+  background: rgba(54, 214, 255, 0.18);
+  color: #9af0ff;
+}
+
+.data-grid {
+  border: 1px solid rgba(52, 80, 127, 0.95);
+  background: linear-gradient(180deg, rgba(12, 24, 46, 0.95), rgba(10, 20, 39, 0.95));
+}
+
+.data-head {
+  border-bottom: 1px solid rgba(57, 83, 129, 0.9);
+  background: rgba(20, 39, 72, 0.55);
+}
+
+.data-row {
+  border-bottom: 1px solid rgba(45, 68, 106, 0.75);
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+.data-row:hover {
+  background: rgba(34, 56, 92, 0.4);
+}

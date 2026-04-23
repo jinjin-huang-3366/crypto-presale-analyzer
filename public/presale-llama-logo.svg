@@ -1,0 +1,37 @@
+<svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="panel" x1="18" y1="10" x2="334" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F2140"/>
+      <stop offset="1" stop-color="#0B172D"/>
+    </linearGradient>
+    <linearGradient id="word" x1="82" y1="20" x2="257" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9EEBFF"/>
+      <stop offset="1" stop-color="#CEE0FF"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="258" y1="48" x2="336" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#32D6FF"/>
+      <stop offset="1" stop-color="#5A87FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1.5" y="1.5" width="357" height="93" rx="20" fill="url(#panel)" stroke="#2B436D" stroke-width="3"/>
+
+  <g transform="translate(18, 16)">
+    <rect x="0" y="0" width="64" height="64" rx="16" fill="#132747" stroke="#345686" stroke-width="2"/>
+    <path d="M22 50V29L27 17H33L35 23L39 17H43L48 29V50H22Z" fill="#DDEBFF"/>
+    <path d="M27 17L23.5 10.5H28.8L31.4 17H27Z" fill="#DDEBFF"/>
+    <path d="M40 17L43.2 10.5H48L45.2 17H40Z" fill="#DDEBFF"/>
+    <rect x="27.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
+    <rect x="37.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
+    <path d="M32 40C33.2 41.7 35 42.5 36.8 42.5C38.4 42.5 39.9 41.9 41 40.7" stroke="#0D1D37" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12 46L20 40L27 43L37 35L48 37" stroke="#52D8FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="96" y="41" fill="url(#word)" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="0.3">
+    Crypto Presale
+  </text>
+  <text x="96" y="67" fill="#A7BDE8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="0.6">
+    Analyzer
+  </text>
+  <path d="M258 57L277 45L293 50L309 39L334 43" stroke="url(#spark)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

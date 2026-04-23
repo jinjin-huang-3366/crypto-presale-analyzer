@@ -1,0 +1,41 @@
+{
+  "name": "crypto-presale-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:smoke:prod": "node scripts/smoke-test.mjs",
+    "vercel:pull": "npx vercel pull --yes --environment=production",
+    "vercel:build": "npx vercel build --prod",
+    "vercel:deploy": "npx vercel deploy --prebuilt --prod",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "score:projects": "tsx scripts/score-projects.ts",
+    "redflags:projects": "tsx scripts/redflags-projects.ts",
+    "summary:projects": "tsx scripts/summarize-projects.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "next": "16.2.4",
+    "pg": "^8.20.0",
+    "prisma": "^7.7.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

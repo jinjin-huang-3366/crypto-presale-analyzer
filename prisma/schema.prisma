@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id              String          @id @default(cuid())
+  name            String
+  slug            String          @unique
+  ticker          String
+  description     String
+  status          String
+  website         String
+  twitter         String?
+  whitepaper      String?
+  start_date      DateTime?
+  end_date        DateTime?
+  fdv             Decimal?
+  sale_price      Decimal?
+  total_supply    Decimal?
+  vesting_summary String?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  score           ProjectScore?
+  summary         ProjectSummary?
+  red_flags       RedFlag[]
+}
+
+model ProjectScore {
+  project_id         String  @id
+  total_score        Int
+  tokenomics_score   Int
+  credibility_score  Int
+  narrative_score    Int
+  liquidity_score    Int
+  transparency_score Int
+  hype_score         Int
+  project            Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model RedFlag {
+  id          String  @id @default(cuid())
+  project_id  String
+  type        String
+  severity    String
+  description String
+  project     Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id])
+}
+
+model ProjectSummary {
+  project_id          String  @id
+  ai_summary          String
+  ai_risk_explanation String
+  project             Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model IngestionSyncRun {
+  id              String   @id @default(cuid())
+  source          String
+  inserted_count  Int
+  updated_count   Int
+  total_processed Int
+  synced_at       DateTime @default(now())
+
+  @@index([synced_at])
+}
