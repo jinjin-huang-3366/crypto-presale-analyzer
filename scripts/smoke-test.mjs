@@ -32,6 +32,14 @@ async function checkJson(path, expectedStatuses) {
   };
 }
 
+function requireHealthConnected(check) {
+  if (check.payload?.status !== "ok" || check.payload?.database !== "connected") {
+    throw new Error(
+      `${check.path} returned unhealthy payload: ${JSON.stringify(check.payload)}`,
+    );
+  }
+}
+
 async function checkHtml(path, expectedText) {
   const url = joinUrl(path);
   const response = await fetch(url);
@@ -54,7 +62,9 @@ async function checkHtml(path, expectedText) {
 async function run() {
   const checks = [];
 
-  checks.push(await checkJson("/api/health", [200, 503]));
+  const healthCheck = await checkJson("/api/health", [200]);
+  requireHealthConnected(healthCheck);
+  checks.push(healthCheck);
   checks.push(await checkJson("/api/projects", [200]));
 
   const projectsPayload = checks[checks.length - 1].payload;

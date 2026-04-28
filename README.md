@@ -51,6 +51,8 @@ Run against deployed app:
 BASE_URL=https://your-app.vercel.app npm run test:smoke:prod
 ```
 
+The smoke test requires `/api/health` to return `200` with `database: "connected"`.
+
 ## Phase 12 Deploy Workflow (Vercel)
 
 1. Login and link project:
@@ -58,24 +60,29 @@ BASE_URL=https://your-app.vercel.app npm run test:smoke:prod
 npx vercel login
 npx vercel link
 ```
-2. Pull env metadata locally:
+2. Pull project metadata locally:
 ```bash
 npm run vercel:pull
 ```
-3. Set required Vercel environment variables:
+3. Set required Vercel environment variables. `DATABASE_URL` must be a hosted PostgreSQL URL reachable from Vercel, not `localhost` or `127.0.0.1`.
 - `DATABASE_URL`
 - `OPENAI_API_KEY` (if AI summary generation is used in prod)
 - `OPENAI_MODEL` (optional override, default from app env)
 - `NEXT_PUBLIC_SITE_URL` (set to your production URL)
 ```bash
-echo "postgresql://<user>:<pass>@<host>:5432/<db>?sslmode=require" | npx vercel env add DATABASE_URL production
+echo "postgresql://<user>:<pass>@<host>:5432/<db>?sslmode=require" | npx vercel env update DATABASE_URL production --sensitive --yes
 echo "https://crypto-presale-analyzer.vercel.app" | npx vercel env add NEXT_PUBLIC_SITE_URL production
 ```
-4. Deploy:
+4. Apply production schema migrations and seed data with the same hosted database URL:
+```bash
+DATABASE_URL="postgresql://<user>:<pass>@<host>:5432/<db>?sslmode=require" npm run db:migrate:deploy
+DATABASE_URL="postgresql://<user>:<pass>@<host>:5432/<db>?sslmode=require" npm run db:seed
+```
+5. Deploy:
 ```bash
 npx vercel deploy --prod --yes
 ```
-5. Validate deployment:
+6. Validate deployment:
 ```bash
 BASE_URL=https://your-app.vercel.app npm run test:smoke:prod
 ```

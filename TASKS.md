@@ -165,9 +165,9 @@ Folders:
 * [x] add Vercel deploy scripts (`vercel:pull`, `vercel:build`, `vercel:deploy`)
 * [x] add deployment runbook (`README.md`)
 * [x] deploy to Vercel
-* [ ] connect DB
-* [ ] test API
-* [ ] test UI
+* [x] connect DB
+* [x] test API
+* [x] test UI
 
 ---
 
@@ -214,6 +214,5 @@ Always:
 ## after dev and mvp
 
 * use openclaw for promoting in all channels
-
 
 

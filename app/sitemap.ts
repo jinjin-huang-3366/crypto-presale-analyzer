@@ -1,30 +1,24 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/lib/db";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-function buildUrl(path: string) {
-  return new URL(path, siteUrl).toString();
-}
+import { buildSiteUrl } from "@/lib/site-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const staticEntries: MetadataRoute.Sitemap = [
     {
-      url: buildUrl("/"),
+      url: buildSiteUrl("/"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: buildUrl("/projects"),
+      url: buildSiteUrl("/projects"),
       lastModified: now,
       changeFrequency: "hourly",
       priority: 0.9,
     },
     {
-      url: buildUrl("/compare"),
+      url: buildSiteUrl("/compare"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.8,
@@ -32,6 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
+    const { db } = await import("@/lib/db");
     const projects = await db.project.findMany({
       select: {
         slug: true,
@@ -45,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [
       ...staticEntries,
       ...projects.map((project) => ({
-        url: buildUrl(`/projects/${project.slug}`),
+        url: buildSiteUrl(`/projects/${project.slug}`),
         lastModified: project.updated_at,
         changeFrequency: "daily" as const,
         priority: 0.7,
