@@ -1,22 +1,36 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1E3E72"/>
-      <stop offset="1" stop-color="#112544"/>
+    <linearGradient id="panel" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#214A86"/>
+      <stop offset="1" stop-color="#14345F"/>
     </linearGradient>
-    <linearGradient id="edge" x1="16" y1="12" x2="47" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#66E8FF"/>
-      <stop offset="1" stop-color="#4E7CFF"/>
+    <linearGradient id="core" x1="20" y1="20" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0E2445"/>
+      <stop offset="1" stop-color="#0A1A32"/>
     </linearGradient>
+    <linearGradient id="accent" x1="20" y1="20" x2="45" y2="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6FF2FF"/>
+      <stop offset="1" stop-color="#6A8CFF"/>
+    </linearGradient>
+    <filter id="glow" x="14" y="20" width="34" height="26" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
-  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bg)" stroke="#315282" stroke-width="2"/>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#panel)" stroke="#84C9FF" stroke-width="2.2"/>
+  <circle cx="32" cy="32" r="18.2" fill="url(#core)" stroke="#6FD3FF" stroke-width="1.9"/>
+  <circle cx="25.5" cy="24.5" r="3" fill="#DFF2FF" opacity="0.42"/>
 
-  <path d="M24 50V29L29 17H35L37 23L41 17H45L50 29V50H24Z" fill="#DDEBFF"/>
-  <path d="M29 17L25.5 10.5H30.8L33.4 17H29Z" fill="#DDEBFF"/>
-  <path d="M42 17L45.2 10.5H50L47.2 17H42Z" fill="#DDEBFF"/>
-  <rect x="29.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
-  <rect x="39.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
-  <path d="M34 40C35.2 41.7 37 42.5 38.8 42.5C40.4 42.5 41.9 41.9 43 40.7" stroke="#0D1D37" stroke-width="2" stroke-linecap="round"/>
-  <path d="M14 46L22 40L29 43L39 35L50 37" stroke="url(#edge)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="23.3" y="34.8" width="4.4" height="9.2" rx="1.1" fill="#F3FAFF"/>
+  <rect x="29.8" y="28.3" width="4.4" height="15.7" rx="1.1" fill="#F3FAFF"/>
+  <rect x="36.3" y="22.8" width="4.4" height="21.2" rx="1.1" fill="#F3FAFF"/>
+
+  <g filter="url(#glow)">
+    <path d="M21 40.6L28.2 33.9L33.1 37L42.6 27.9" stroke="url(#accent)" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M42.6 27.9H39.4M42.6 27.9V31.1" stroke="url(#accent)" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

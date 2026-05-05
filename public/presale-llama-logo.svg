@@ -1,37 +1,54 @@
 <svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="panel" x1="18" y1="10" x2="334" y2="96" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0F2140"/>
-      <stop offset="1" stop-color="#0B172D"/>
+    <linearGradient id="iconPanel" x1="22" y1="18" x2="78" y2="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#214A86"/>
+      <stop offset="1" stop-color="#14345F"/>
     </linearGradient>
-    <linearGradient id="word" x1="82" y1="20" x2="257" y2="80" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#9EEBFF"/>
-      <stop offset="1" stop-color="#CEE0FF"/>
+    <linearGradient id="core" x1="38" y1="34" x2="62" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0E2445"/>
+      <stop offset="1" stop-color="#0A1A32"/>
     </linearGradient>
-    <linearGradient id="spark" x1="258" y1="48" x2="336" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#32D6FF"/>
-      <stop offset="1" stop-color="#5A87FF"/>
+    <linearGradient id="accent" x1="30" y1="26" x2="74" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6FF2FF"/>
+      <stop offset="1" stop-color="#6A8CFF"/>
     </linearGradient>
+    <linearGradient id="title" x1="96" y1="28" x2="262" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F2FAFF"/>
+      <stop offset="1" stop-color="#D8EBFF"/>
+    </linearGradient>
+    <filter id="shadow" x="92" y="16" width="212" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#071222" flood-opacity="0.65"/>
+    </filter>
+    <filter id="glow" x="36" y="40" width="30" height="22" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
-  <rect x="1.5" y="1.5" width="357" height="93" rx="20" fill="url(#panel)" stroke="#2B436D" stroke-width="3"/>
-
-  <g transform="translate(18, 16)">
-    <rect x="0" y="0" width="64" height="64" rx="16" fill="#132747" stroke="#345686" stroke-width="2"/>
-    <path d="M22 50V29L27 17H33L35 23L39 17H43L48 29V50H22Z" fill="#DDEBFF"/>
-    <path d="M27 17L23.5 10.5H28.8L31.4 17H27Z" fill="#DDEBFF"/>
-    <path d="M40 17L43.2 10.5H48L45.2 17H40Z" fill="#DDEBFF"/>
-    <rect x="27.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
-    <rect x="37.5" y="30.5" width="4" height="4" rx="2" fill="#0D1D37"/>
-    <path d="M32 40C33.2 41.7 35 42.5 36.8 42.5C38.4 42.5 39.9 41.9 41 40.7" stroke="#0D1D37" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 46L20 40L27 43L37 35L48 37" stroke="#52D8FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <g>
+    <rect x="18" y="16" width="64" height="64" rx="16" fill="url(#iconPanel)" stroke="#84C9FF" stroke-width="2.2"/>
+    <circle cx="50" cy="48" r="18.2" fill="url(#core)" stroke="#6FD3FF" stroke-width="1.9"/>
+    <circle cx="43.5" cy="40.5" r="3" fill="#DFF2FF" opacity="0.42"/>
+    <rect x="41.3" y="50.8" width="4.4" height="9.2" rx="1.1" fill="#F3FAFF"/>
+    <rect x="47.8" y="44.3" width="4.4" height="15.7" rx="1.1" fill="#F3FAFF"/>
+    <rect x="54.3" y="38.8" width="4.4" height="21.2" rx="1.1" fill="#F3FAFF"/>
+    <g filter="url(#glow)">
+      <path d="M39 56.6L46.2 49.9L51.1 53L60.6 43.9" stroke="url(#accent)" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M60.6 43.9H57.4M60.6 43.9V47.1" stroke="url(#accent)" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
   </g>
 
-  <text x="96" y="41" fill="url(#word)" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="0.3">
-    Crypto Presale
-  </text>
-  <text x="96" y="67" fill="#A7BDE8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="0.6">
-    Analyzer
-  </text>
-  <path d="M258 57L277 45L293 50L309 39L334 43" stroke="url(#spark)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g filter="url(#shadow)">
+    <text x="96" y="42" fill="url(#title)" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="29" font-weight="700" letter-spacing="0.7">
+      CRYPTO PRESALE
+    </text>
+    <text x="96" y="66" fill="#9EEAFF" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="1.8">
+      ANALYZER
+    </text>
+  </g>
+
+  <path d="M278 60L291 50.5L301 54.8L315 44L334 47.5" stroke="url(#accent)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
