@@ -27,6 +27,28 @@ npm run db:seed
 npm run dev
 ```
 
+## Real Data Ingestion (Presale Sources)
+
+`POST /api/internal/sync` supports presale-focused ingestion via ICO Drops upcoming rounds.
+
+Supported source modes:
+- `icodrops` (default): use ICO Drops upcoming token sales only
+- `auto`: try ICO Drops first, then fall back to mock if it fails
+- `coinpaprika`: fallback market source (not presale-specific)
+- `mock`: use mock source only
+
+Environment knobs:
+- `INGESTION_SOURCE` (`icodrops` | `auto` | `coinpaprika` | `mock`)
+- `INGESTION_REAL_LIMIT` (default `25`, max `100`)
+- `COINPAPRIKA_DETAILS_LIMIT` (default `8`, max `INGESTION_REAL_LIMIT`)
+
+Examples:
+```bash
+curl -X POST "http://localhost:3000/api/internal/sync?source=icodrops"
+curl -X POST "http://localhost:3000/api/internal/sync?source=coinpaprika"
+curl -X POST "http://localhost:3000/api/internal/sync?source=mock"
+```
+
 ## Build Check
 
 ```bash

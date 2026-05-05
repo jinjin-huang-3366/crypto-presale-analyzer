@@ -176,7 +176,7 @@ Folders:
 * [ ] watchlist
 * [ ] alerts
 * [ ] better scoring weights
-* [ ] real data sources
+* [x] real data sources
 * [ ] caching
 * [ ] queue system
 
@@ -214,5 +214,4 @@ Always:
 ## after dev and mvp
 
 * use openclaw for promoting in all channels
-
 
