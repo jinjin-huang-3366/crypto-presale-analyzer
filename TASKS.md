@@ -170,6 +170,13 @@ Folders:
 * [x] test UI
 
 ---
+## Fixes
+
+* [x] logo overlap on home page
+* [x] legend and explanation about the algo to come up with the score
+* [x] source project logo as well 
+
+---
 
 ## Optional (After MVP)
 
@@ -214,4 +221,3 @@ Always:
 ## after dev and mvp
 
 * use openclaw for promoting in all channels
-

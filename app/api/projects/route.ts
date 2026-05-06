@@ -26,6 +26,7 @@ export async function GET() {
       description: project.description,
       status: project.status,
       website: project.website,
+      logo_url: project.logo_url,
       twitter: project.twitter,
       whitepaper: project.whitepaper,
       start_date: project.start_date?.toISOString() ?? null,

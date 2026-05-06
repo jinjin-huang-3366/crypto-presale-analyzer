@@ -25,6 +25,7 @@ type CoinPaprikaTicker = {
 type CoinPaprikaCoinDetails = {
   id?: string;
   description?: string | null;
+  logo?: string | null;
   is_active?: boolean;
   started_at?: string | null;
   links?: {
@@ -220,6 +221,14 @@ function getWhitepaper(details: CoinPaprikaCoinDetails | null): string | null {
   return isHttpUrl(link) ? link : null;
 }
 
+function getLogo(coinId: string, details: CoinPaprikaCoinDetails | null): string | null {
+  if (isHttpUrl(details?.logo)) {
+    return details.logo;
+  }
+
+  return `https://static.coinpaprika.com/coin/${coinId}/logo.png`;
+}
+
 export async function getCoinPaprikaIngestionProjects(): Promise<IngestionProjectRecord[]> {
   const limit = parsePositiveInt(
     process.env.INGESTION_REAL_LIMIT,
@@ -262,6 +271,7 @@ export async function getCoinPaprikaIngestionProjects(): Promise<IngestionProjec
       description,
       status: details?.is_active === false ? "ended" : "live",
       website: getWebsite(coinId, details),
+      logo_url: getLogo(coinId, details),
       twitter: getTwitter(details),
       whitepaper: getWhitepaper(details),
       start_date: detailStartedAt ?? tickerStartedAt,

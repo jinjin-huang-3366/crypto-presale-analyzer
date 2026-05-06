@@ -91,6 +91,35 @@ function severityClass(severity: string) {
   return "border border-slate-500/45 bg-slate-500/20 text-slate-200";
 }
 
+function getTickerBadge(ticker: string) {
+  const normalized = ticker.trim().toUpperCase();
+  return normalized.slice(0, 3) || "TOK";
+}
+
+function getFallbackFaviconUrl(website: string) {
+  const trimmed = website.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(trimmed).hostname;
+    if (!hostname) {
+      return null;
+    }
+    return `https://www.google.com/s2/favicons?sz=96&domain=${encodeURIComponent(hostname)}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProjectLogo(logoUrl: string | null, website: string) {
+  if (logoUrl && logoUrl.trim().length > 0) {
+    return logoUrl.trim();
+  }
+  return getFallbackFaviconUrl(website);
+}
+
 export default async function ProjectDetailPage({ params }: PageProps) {
   const { slug } = await params;
 
@@ -119,10 +148,34 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 py-12">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-faint text-sm">{project.ticker}</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-blue-50">{project.name}</h1>
-          <p className="text-muted mt-2 max-w-3xl text-sm">{project.description}</p>
+        <div className="flex min-w-0 items-start gap-4">
+          {(() => {
+            const logoUrl = resolveProjectLogo(project.logo_url, project.website);
+            if (logoUrl) {
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={`${project.name} logo`}
+                  className="h-12 w-12 shrink-0 rounded-lg border border-blue-400/25 bg-blue-500/10 object-cover p-0.5"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+              );
+            }
+
+            return (
+              <div className="h-12 w-12 shrink-0 rounded-lg border border-blue-400/25 bg-blue-500/10 text-center text-sm font-semibold leading-[3rem] text-blue-200">
+                {getTickerBadge(project.ticker)}
+              </div>
+            );
+          })()}
+          <div className="min-w-0">
+            <p className="text-faint text-sm">{project.ticker}</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-blue-50">{project.name}</h1>
+            <p className="text-muted mt-2 max-w-3xl text-sm">{project.description}</p>
+          </div>
         </div>
         <div className="surface-card rounded-lg px-5 py-3 text-right">
           <p className="text-faint text-xs uppercase tracking-wide">Total Score</p>

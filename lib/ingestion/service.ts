@@ -90,15 +90,64 @@ async function loadProjectsBySource(source: IngestionSource): Promise<{
       projects: await getIcoDropsUpcomingProjects(),
       fallbackMessage: null,
     };
-  } catch (error) {
-    console.error("ICO Drops ingestion failed. Falling back to mock source.", error);
-    return {
-      sourceUsed: "mock",
-      projects: getMockIngestionProjects(),
-      fallbackMessage:
-        "ICO Drops fetch failed; sync automatically fell back to mock source.",
-    };
+  } catch (icodropsError) {
+    console.error("ICO Drops ingestion failed. Falling back to CoinPaprika.", icodropsError);
+
+    try {
+      return {
+        sourceUsed: "coinpaprika",
+        projects: await getCoinPaprikaIngestionProjects(),
+        fallbackMessage:
+          "ICO Drops fetch failed; sync automatically fell back to CoinPaprika source.",
+      };
+    } catch (coinpaprikaError) {
+      console.error("CoinPaprika fallback also failed.", coinpaprikaError);
+      throw new Error(
+        "Automatic real-data sync failed for both ICO Drops and CoinPaprika. Use source=mock only when test data is intentionally needed.",
+      );
+    }
   }
+}
+
+function isPlaceholderWebsite(website: string) {
+  const trimmed = website.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(trimmed).hostname.toLowerCase();
+    return hostname === "example" || hostname.endsWith(".example");
+  } catch {
+    return false;
+  }
+}
+
+async function prunePlaceholderProjects() {
+  const projects = await db.project.findMany({
+    select: {
+      id: true,
+      website: true,
+    },
+  });
+
+  const idsToDelete = projects
+    .filter((project) => isPlaceholderWebsite(project.website))
+    .map((project) => project.id);
+
+  if (idsToDelete.length === 0) {
+    return 0;
+  }
+
+  const result = await db.project.deleteMany({
+    where: {
+      id: {
+        in: idsToDelete,
+      },
+    },
+  });
+
+  return result.count;
 }
 
 export async function syncProjects(options?: {
@@ -128,6 +177,9 @@ export async function syncProjects(options?: {
       syncedAt,
     };
   }
+
+  const removedPlaceholderCount =
+    sourceUsed === "mock" ? 0 : await prunePlaceholderProjects();
 
   const existingProjects = await db.project.findMany({
     where: {
@@ -178,6 +230,10 @@ export async function syncProjects(options?: {
   const scored = await scoreAndStoreAllProjects();
 
   const fallbackNote = fallbackMessage ? ` ${fallbackMessage}` : "";
+  const cleanupNote =
+    removedPlaceholderCount > 0
+      ? ` Removed ${removedPlaceholderCount} placeholder project(s) from prior mock/seed data.`
+      : "";
 
   return {
     source: sourceUsed,
@@ -185,7 +241,7 @@ export async function syncProjects(options?: {
     updated,
     totalProcessed: projects.length,
     slugs: projects.map((project) => project.slug),
-    message: `Synced ${projects.length} projects from ${sourceUsed} source and scored ${scored.length} projects.${fallbackNote}`,
+    message: `Synced ${projects.length} projects from ${sourceUsed} source and scored ${scored.length} projects.${cleanupNote}${fallbackNote}`,
     syncedAt,
   };
 }

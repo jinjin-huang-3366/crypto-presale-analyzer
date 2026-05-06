@@ -114,6 +114,31 @@ function parseUsdCompact(value: string): string | null {
   return String(numeric * multiplier);
 }
 
+function normalizeAssetUrl(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  if (trimmed.startsWith("/")) {
+    return `${ICODROPS_PROJECT_BASE_URL}${trimmed}`;
+  }
+
+  return `${ICODROPS_PROJECT_BASE_URL}/${trimmed.replace(/^\/+/, "")}`;
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -191,6 +216,9 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
     /Tbl-Row__item--date[\s\S]*?<time[^>]*>([\s\S]*?)<\/time>/,
     rowHtml,
   );
+  const logoRaw =
+    getCapture(/<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]*>/i, rowHtml) ??
+    getCapture(/style=["'][^"']*url\(([^)]+)\)[^"']*["']/i, rowHtml);
 
   const cleanPath = projectPath.trim();
   const slugFromPath = cleanPath.replace(/^\/+|\/+$/g, "");
@@ -199,6 +227,7 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
   const round = cleanText(roundRaw);
   const saleDate = cleanText(dateRaw);
   const startDate = parseDate(saleDate);
+  const logoUrl = normalizeAssetUrl(logoRaw ? logoRaw.replace(/["']/g, "") : null);
 
   return {
     name,
@@ -209,6 +238,7 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
       : "Upcoming token sale listed on ICO Drops.",
     status: "upcoming",
     website: `${ICODROPS_PROJECT_BASE_URL}/${slug}/`,
+    logo_url: logoUrl,
     twitter: null,
     whitepaper: null,
     start_date: startDate,

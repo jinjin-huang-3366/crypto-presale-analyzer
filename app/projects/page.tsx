@@ -9,6 +9,66 @@ export const metadata: Metadata = {
   description: "Browse scored crypto presale projects and review status, total score, and detail pages.",
 };
 
+const scoreLegend = [
+  {
+    range: "80-100",
+    label: "Lower Risk",
+    description: "Stronger fundamentals versus current project set.",
+    className: "border border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
+  },
+  {
+    range: "65-79",
+    label: "Moderate Risk",
+    description: "Mixed quality with some caution areas.",
+    className: "border border-cyan-500/35 bg-cyan-500/10 text-cyan-200",
+  },
+  {
+    range: "50-64",
+    label: "Elevated Risk",
+    description: "Material weaknesses are present.",
+    className: "border border-amber-500/35 bg-amber-500/10 text-amber-200",
+  },
+  {
+    range: "0-49",
+    label: "High Risk",
+    description: "Weak structure or limited transparency signals.",
+    className: "border border-red-500/35 bg-red-500/10 text-red-200",
+  },
+] as const;
+
+const scoreCategories = [
+  {
+    label: "Tokenomics",
+    max: 25,
+    details: "FDV sanity (50%), insider allocation (35%), vesting quality (15%).",
+  },
+  {
+    label: "Credibility",
+    max: 20,
+    details: "Allocation quality (45%), vesting quality (35%), whitepaper presence (20%).",
+  },
+  {
+    label: "Narrative",
+    max: 15,
+    details: "Description quality, website availability, and whitepaper availability.",
+  },
+  {
+    label: "Liquidity",
+    max: 20,
+    details: "Vesting strength (60%) and FDV sanity (40%).",
+  },
+  {
+    label: "Transparency",
+    max: 10,
+    details: "Vesting clarity (70%), whitepaper (20%), website (10%).",
+  },
+  {
+    label: "Hype",
+    max: 10,
+    details: "Status-based signal plus Twitter presence.",
+  },
+] as const;
+
 function statusClass(status: string) {
   if (status === "live") {
     return "border border-emerald-500/35 bg-emerald-500/15 text-emerald-200";
@@ -19,6 +79,35 @@ function statusClass(status: string) {
   return "border border-amber-500/35 bg-amber-500/15 text-amber-200";
 }
 
+function getTickerBadge(ticker: string) {
+  const normalized = ticker.trim().toUpperCase();
+  return normalized.slice(0, 3) || "TOK";
+}
+
+function getFallbackFaviconUrl(website: string) {
+  const trimmed = website.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(trimmed).hostname;
+    if (!hostname) {
+      return null;
+    }
+    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProjectLogo(logoUrl: string | null, website: string) {
+  if (logoUrl && logoUrl.trim().length > 0) {
+    return logoUrl.trim();
+  }
+  return getFallbackFaviconUrl(website);
+}
+
 export default async function ProjectsPage() {
   const projects = await db.project.findMany({
     select: {
@@ -27,6 +116,8 @@ export default async function ProjectsPage() {
       slug: true,
       ticker: true,
       status: true,
+      website: true,
+      logo_url: true,
       score: {
         select: {
           total_score: true,
@@ -72,6 +163,51 @@ export default async function ProjectsPage() {
         </article>
       </section>
 
+      <section className="surface-card rounded-xl p-5">
+        <h2 className="text-lg font-semibold tracking-tight text-blue-50">Score Legend & Algorithm</h2>
+        <p className="text-muted mt-2 text-sm">
+          Total score is out of 100 and is the sum of six category scores. The model penalizes very
+          high FDV, high insider allocation, and weak vesting disclosure, while rewarding clearer
+          documentation and project transparency.
+        </p>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <article className="surface-card-soft rounded-lg p-4">
+            <p className="text-faint text-[11px] uppercase tracking-wide">Legend (Total Score)</p>
+            <ul className="mt-3 space-y-2">
+              {scoreLegend.map((item) => (
+                <li key={item.range} className="metric-tile rounded-md px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.className}`}>
+                      {item.range}
+                    </span>
+                    <span className="text-sm font-semibold text-blue-100">{item.label}</span>
+                  </div>
+                  <p className="text-muted mt-1 text-xs">{item.description}</p>
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="surface-card-soft rounded-lg p-4">
+            <p className="text-faint text-[11px] uppercase tracking-wide">Category Weights</p>
+            <div className="mt-3 space-y-2">
+              {scoreCategories.map((item) => (
+                <div key={item.label} className="metric-tile rounded-md px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-blue-100">
+                      {item.label}
+                    </p>
+                    <p className="text-xs font-semibold text-cyan-200">{item.max} pts</p>
+                  </div>
+                  <p className="text-muted mt-1 text-xs">{item.details}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
+
       {sorted.length > 0 && (
         <section className="data-grid overflow-hidden rounded-xl">
           <div className="overflow-x-auto">
@@ -91,9 +227,29 @@ export default async function ProjectsPage() {
                     <td className="px-4 py-3 text-sm font-semibold text-blue-200">{index + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-md border border-blue-400/25 bg-blue-500/10 text-center text-xs font-semibold leading-8 text-blue-200">
-                          {project.ticker.slice(0, 3)}
-                        </div>
+                        {(() => {
+                          const logoUrl = resolveProjectLogo(project.logo_url, project.website);
+
+                          if (logoUrl) {
+                            return (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={logoUrl}
+                                alt={`${project.name} logo`}
+                                className="h-8 w-8 rounded-md border border-blue-400/25 bg-blue-500/10 object-cover p-0.5"
+                                loading="lazy"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                              />
+                            );
+                          }
+
+                          return (
+                            <div className="h-8 w-8 rounded-md border border-blue-400/25 bg-blue-500/10 text-center text-xs font-semibold leading-8 text-blue-200">
+                              {getTickerBadge(project.ticker)}
+                            </div>
+                          );
+                        })()}
                         <div className="min-w-0">
                           <Link
                             href={`/projects/${project.slug}`}

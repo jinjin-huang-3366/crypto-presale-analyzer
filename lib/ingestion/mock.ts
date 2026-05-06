@@ -10,6 +10,7 @@ type MockSourceProject = {
   status: MockSourceStatus;
   links: {
     website: string;
+    logo?: string;
     twitter?: string;
     whitepaper?: string;
   };
@@ -154,6 +155,11 @@ function normalizeOptionalText(value: string | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function buildMockLogoUrl(seed: string): string {
+  const encoded = encodeURIComponent(seed.trim().toLowerCase());
+  return `https://api.dicebear.com/9.x/shapes/svg?seed=${encoded}`;
+}
+
 function normalizeProject(project: MockSourceProject): IngestionProjectRecord {
   return {
     name: project.projectName.trim(),
@@ -162,6 +168,7 @@ function normalizeProject(project: MockSourceProject): IngestionProjectRecord {
     description: project.blurb.trim(),
     status: normalizeStatus(project.status),
     website: project.links.website.trim(),
+    logo_url: normalizeOptionalText(project.links.logo) ?? buildMockLogoUrl(project.slug),
     twitter: normalizeOptionalText(project.links.twitter),
     whitepaper: normalizeOptionalText(project.links.whitepaper),
     start_date: parseDate(project.saleWindow?.start),

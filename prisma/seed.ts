@@ -10,6 +10,7 @@ type SeedProject = {
   description: string;
   status: string;
   website: string;
+  logoUrl?: string;
   twitter?: string;
   whitepaper?: string;
   startDate?: string;
@@ -476,6 +477,10 @@ const seedProjects: SeedProject[] = [
   },
 ];
 
+function buildSeedLogoUrl(slug: string): string {
+  return `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(slug)}`;
+}
+
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -502,6 +507,7 @@ async function main() {
           description: item.description,
           status: item.status,
           website: item.website,
+          logo_url: item.logoUrl ?? buildSeedLogoUrl(item.slug),
           twitter: item.twitter,
           whitepaper: item.whitepaper,
           start_date: item.startDate ? new Date(item.startDate) : null,

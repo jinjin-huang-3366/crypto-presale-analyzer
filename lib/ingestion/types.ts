@@ -5,6 +5,7 @@ export type IngestionProjectRecord = {
   description: string;
   status: "upcoming" | "live" | "ended";
   website: string;
+  logo_url: string | null;
   twitter: string | null;
   whitepaper: string | null;
   start_date: Date | null;

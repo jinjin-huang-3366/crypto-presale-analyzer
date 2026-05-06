@@ -33,9 +33,9 @@ npm run dev
 
 Supported source modes:
 - `icodrops` (default): use ICO Drops upcoming token sales only
-- `auto`: try ICO Drops first, then fall back to mock if it fails
+- `auto`: try ICO Drops first, then fall back to CoinPaprika if it fails
 - `coinpaprika`: fallback market source (not presale-specific)
-- `mock`: use mock source only
+- `mock`: use mock source only (explicitly for testing/sample data)
 
 Environment knobs:
 - `INGESTION_SOURCE` (`icodrops` | `auto` | `coinpaprika` | `mock`)

@@ -16,7 +16,7 @@
       <stop offset="0" stop-color="#F2FAFF"/>
       <stop offset="1" stop-color="#D8EBFF"/>
     </linearGradient>
-    <filter id="shadow" x="92" y="16" width="212" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <filter id="shadow" x="90" y="16" width="268" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feDropShadow dx="0" dy="1.2" stdDeviation="1" flood-color="#071222" flood-opacity="0.65"/>
     </filter>
     <filter id="glow" x="36" y="40" width="30" height="22" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
