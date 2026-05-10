@@ -30,6 +30,7 @@ npm run dev
 ## Real Data Ingestion (Presale Sources)
 
 `POST /api/internal/sync` supports presale-focused ingestion via multiple real-data providers.
+By default, sync keeps only `upcoming` projects. Pass `include_live=true` to keep `upcoming + live presale` records from ICO Drops active/upcoming feeds.
 
 Supported source modes:
 - `auto` (default): merge ICO Drops upcoming rounds with CoinPaprika data, with ICO Drops as primary when records overlap
@@ -46,6 +47,8 @@ Environment knobs:
 Examples:
 ```bash
 curl -X POST "http://localhost:3000/api/internal/sync?source=auto"
+curl -X POST "http://localhost:3000/api/internal/sync?source=auto&include_live=true"
+curl -X POST "http://localhost:3000/api/internal/sync?source=icodrops&include_live=true"
 curl -X POST "http://localhost:3000/api/internal/sync?source=icodrops"
 curl -X POST "http://localhost:3000/api/internal/sync?source=coinpaprika"
 curl -X POST "http://localhost:3000/api/internal/sync?source=mock"

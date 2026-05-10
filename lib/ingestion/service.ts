@@ -2,7 +2,10 @@ import { db } from "../db";
 import { detectAndStoreAllRedFlags } from "../redflags/service";
 import { scoreAndStoreAllProjects } from "../scoring/service";
 import { getCoinPaprikaIngestionProjects } from "./coinpaprika";
-import { getIcoDropsUpcomingProjects } from "./icodrops";
+import {
+  getIcoDropsActiveProjects,
+  getIcoDropsUpcomingProjects,
+} from "./icodrops";
 import { getMockIngestionProjects } from "./mock";
 import type { IngestionProjectRecord, IngestionSource } from "./types";
 
@@ -101,7 +104,11 @@ function mergeProjectRecord(
 function mergeProjectLists(
   primary: IngestionProjectRecord[],
   secondary: IngestionProjectRecord[],
+  options?: {
+    appendSecondaryUnknown?: boolean;
+  },
 ): IngestionProjectRecord[] {
+  const appendSecondaryUnknown = options?.appendSecondaryUnknown ?? true;
   const merged = [...primary];
   const indexByKey = new Map<string, number>();
   const indexBySlug = new Map<string, number>();
@@ -126,12 +133,88 @@ function mergeProjectLists(
       continue;
     }
 
+    if (!appendSecondaryUnknown) {
+      continue;
+    }
+
     indexBySlug.set(project.slug, merged.length);
     indexByKey.set(dedupeKey, merged.length);
     merged.push(project);
   }
 
   return merged;
+}
+
+function normalizedStatus(status: string) {
+  return status.trim().toLowerCase();
+}
+
+function isUpcomingProject(project: IngestionProjectRecord, nowMs: number): boolean {
+  const status = normalizedStatus(project.status);
+
+  if (status === "upcoming") {
+    return true;
+  }
+
+  if (status === "ended") {
+    return false;
+  }
+
+  if (project.start_date) {
+    return project.start_date.getTime() > nowMs;
+  }
+
+  return false;
+}
+
+function isLiveProject(project: IngestionProjectRecord, nowMs: number): boolean {
+  const status = normalizedStatus(project.status);
+
+  if (status === "ended") {
+    return false;
+  }
+
+  if (status === "live") {
+    return true;
+  }
+
+  if (status === "upcoming") {
+    return false;
+  }
+
+  if (project.end_date && project.end_date.getTime() <= nowMs) {
+    return false;
+  }
+
+  if (project.start_date) {
+    return project.start_date.getTime() <= nowMs;
+  }
+
+  return false;
+}
+
+function filterProjectsByStatusWindow(
+  projects: IngestionProjectRecord[],
+  includeLive: boolean,
+): {
+  projects: IngestionProjectRecord[];
+  excludedCount: number;
+} {
+  const nowMs = Date.now();
+  const filteredProjects = projects.filter((project) => {
+    if (isUpcomingProject(project, nowMs)) {
+      return true;
+    }
+    if (!includeLive) {
+      return false;
+    }
+    return isLiveProject(project, nowMs);
+  });
+
+  return {
+    projects: filteredProjects,
+    excludedCount: projects.length - filteredProjects.length,
+  };
 }
 
 function resolveIngestionSource(
@@ -176,15 +259,21 @@ async function loadProjectsBySource(source: IngestionSource): Promise<{
   }
 
   if (source === "icodrops") {
+    const [upcoming, active] = await Promise.all([
+      getIcoDropsUpcomingProjects(),
+      getIcoDropsActiveProjects(),
+    ]);
     return {
       sourceUsed: "icodrops",
-      projects: await getIcoDropsUpcomingProjects(),
+      projects: mergeProjectLists(upcoming, active),
       fallbackMessage: null,
     };
   }
 
   const [icodropsResult, coinpaprikaResult] = await Promise.allSettled([
-    getIcoDropsUpcomingProjects(),
+    Promise.all([getIcoDropsUpcomingProjects(), getIcoDropsActiveProjects()]).then(
+      ([upcoming, active]) => mergeProjectLists(upcoming, active),
+    ),
     getCoinPaprikaIngestionProjects(),
   ]);
 
@@ -212,7 +301,10 @@ async function loadProjectsBySource(source: IngestionSource): Promise<{
     );
   }
 
-  const mergedProjects = mergeProjectLists(icodropsProjects, coinpaprikaProjects);
+  // Keep auto mode presale-focused: only use CoinPaprika to enrich overlapping ICO Drops records.
+  const mergedProjects = mergeProjectLists(icodropsProjects, coinpaprikaProjects, {
+    appendSecondaryUnknown: false,
+  });
   const failureNote =
     fallbackNotes.length > 0
       ? `${fallbackNotes.join(" ")} Auto mode merged whatever source data remained available.`
@@ -266,13 +358,60 @@ async function prunePlaceholderProjects() {
   return result.count;
 }
 
+async function pruneProjectsOutsideStatusWindow(includeLive: boolean) {
+  const result = await db.project.deleteMany(
+    includeLive
+      ? {
+          where: {
+            status: {
+              notIn: ["upcoming", "live"],
+            },
+          },
+        }
+      : {
+          where: {
+            status: {
+              not: "upcoming",
+            },
+          },
+        },
+  );
+
+  return result.count;
+}
+
+async function pruneLiveProjectsNotInCurrentFeed(currentSlugs: string[]) {
+  if (currentSlugs.length === 0) {
+    return 0;
+  }
+
+  const result = await db.project.deleteMany({
+    where: {
+      status: "live",
+      slug: {
+        notIn: currentSlugs,
+      },
+    },
+  });
+
+  return result.count;
+}
+
 export async function syncProjects(options?: {
   source?: IngestionSource;
+  includeLive?: boolean;
 }): Promise<SyncProjectsResult> {
   const requestedSource = resolveIngestionSource(options?.source);
-  const { sourceUsed, projects, fallbackMessage } =
+  const includeLive = options?.includeLive ?? false;
+  const { sourceUsed, projects: loadedProjects, fallbackMessage } =
     await loadProjectsBySource(requestedSource);
+  const { projects, excludedCount } = filterProjectsByStatusWindow(
+    loadedProjects,
+    includeLive,
+  );
   const syncedAt = new Date();
+  const statusWindowLabel = includeLive ? "upcoming/live" : "upcoming";
+  const excludedLabel = includeLive ? "out-of-window" : "non-upcoming";
 
   if (projects.length === 0) {
     await storeSyncRun({
@@ -289,13 +428,22 @@ export async function syncProjects(options?: {
       updated: 0,
       totalProcessed: 0,
       slugs: [],
-      message: `No projects available from ${sourceUsed} ingestion source.`,
+      message:
+        excludedCount > 0
+          ? `No ${statusWindowLabel} projects available from ${sourceUsed} ingestion source. Excluded ${excludedCount} ${excludedLabel} project(s).`
+          : `No projects available from ${sourceUsed} ingestion source.`,
       syncedAt,
     };
   }
 
   const removedPlaceholderCount =
     sourceUsed === "mock" ? 0 : await prunePlaceholderProjects();
+  const removedOutOfWindowCount =
+    sourceUsed === "mock" ? 0 : await pruneProjectsOutsideStatusWindow(includeLive);
+  const removedStaleLiveCount =
+    !includeLive || sourceUsed === "mock" || sourceUsed === "coinpaprika"
+      ? 0
+      : await pruneLiveProjectsNotInCurrentFeed(projects.map((project) => project.slug));
 
   const existingProjects = await db.project.findMany({
     where: {
@@ -350,6 +498,18 @@ export async function syncProjects(options?: {
     removedPlaceholderCount > 0
       ? ` Removed ${removedPlaceholderCount} placeholder project(s) from prior mock/seed data.`
       : "";
+  const outOfWindowCleanupNote =
+    removedOutOfWindowCount > 0
+      ? ` Removed ${removedOutOfWindowCount} ${excludedLabel} project(s) from prior sync data.`
+      : "";
+  const staleLiveCleanupNote =
+    removedStaleLiveCount > 0
+      ? ` Removed ${removedStaleLiveCount} stale live market project(s) that were not present in the latest presale feed.`
+      : "";
+  const exclusionNote =
+    excludedCount > 0
+      ? ` Excluded ${excludedCount} ${excludedLabel} project(s) from the latest source payload.`
+      : "";
 
   return {
     source: sourceUsed,
@@ -357,7 +517,7 @@ export async function syncProjects(options?: {
     updated,
     totalProcessed: projects.length,
     slugs: projects.map((project) => project.slug),
-    message: `Synced ${projects.length} projects from ${sourceUsed} source and scored ${scored.length} projects.${cleanupNote}${fallbackNote}`,
+    message: `Synced ${projects.length} ${statusWindowLabel} projects from ${sourceUsed} source and scored ${scored.length} projects.${cleanupNote}${outOfWindowCleanupNote}${staleLiveCleanupNote}${exclusionNote}${fallbackNote}`,
     syncedAt,
   };
 }

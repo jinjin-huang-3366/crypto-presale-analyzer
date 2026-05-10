@@ -81,6 +81,55 @@ function formatDecimal(value: Prisma.Decimal | null) {
   }).format(numeric);
 }
 
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractMetaDescriptionFromIcoDropsHtml(html: string): string | null {
+  const match = html.match(
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
+  );
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const description = decodeHtmlEntities(match[1]);
+  return description.length > 0 ? description : null;
+}
+
+async function fetchIcoDropsShortDescription(slug: string): Promise<string | null> {
+  const url = `https://icodrops.com/${slug}/`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (compatible; crypto-presale-analyzer/1.0)",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const html = await response.text();
+    return extractMetaDescriptionFromIcoDropsHtml(html);
+  } catch {
+    return null;
+  }
+}
+
 function severityClass(severity: string) {
   if (severity === "high") {
     return "border border-red-500/35 bg-red-500/15 text-red-200";
@@ -120,6 +169,18 @@ function resolveProjectLogo(logoUrl: string | null, website: string) {
   return getFallbackFaviconUrl(website);
 }
 
+function normalizeDescription(description: string) {
+  const trimmed = description.trim();
+  if (!trimmed) {
+    return ["Description is not available yet."];
+  }
+
+  return trimmed
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 export default async function ProjectDetailPage({ params }: PageProps) {
   const { slug } = await params;
 
@@ -144,6 +205,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     { label: "Transparency", value: project.score?.transparency_score ?? 0, max: 10 },
     { label: "Hype", value: project.score?.hype_score ?? 0, max: 10 },
   ];
+  const descriptionParagraphs = normalizeDescription(project.description);
+  const headerShortDescription = await fetchIcoDropsShortDescription(project.slug);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 py-12">
@@ -174,7 +237,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           <div className="min-w-0">
             <p className="text-faint text-sm">{project.ticker}</p>
             <h1 className="text-3xl font-semibold tracking-tight text-blue-50">{project.name}</h1>
-            <p className="text-muted mt-2 max-w-3xl text-sm">{project.description}</p>
+            <p className="text-muted mt-2 max-w-3xl text-sm">
+              {headerShortDescription ?? "Project summary unavailable."}
+            </p>
           </div>
         </div>
         <div className="surface-card rounded-lg px-5 py-3 text-right">
@@ -211,6 +276,17 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           <p className="mt-1 text-sm font-medium text-blue-100">
             {project.vesting_summary ?? "N/A"}
           </p>
+        </div>
+      </section>
+
+      <section className="surface-card rounded-lg p-5">
+        <h2 className="text-xl font-semibold text-blue-50">Description</h2>
+        <div className="mt-3 space-y-3">
+          {descriptionParagraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph.slice(0, 24)}`} className="text-sm leading-6 text-blue-100">
+              {paragraph}
+            </p>
+          ))}
         </div>
       </section>
 

@@ -176,9 +176,9 @@ Folders:
 * [x] legend and explanation about the algo to come up with the score
 * [x] source project logo as well 
 * [x] multiple source, not just icodrop, also update the website link to the official presale site
-* [ ] no live presale, only upcoming?
-* [ ] data missing, sale window, sale price and etc
-* [ ] add description section in the project details page
+* [x] no live presale, only upcoming?
+* [x] data missing, sale window, sale price and etc
+* [x] add description section in the project details page
 
 ---
 

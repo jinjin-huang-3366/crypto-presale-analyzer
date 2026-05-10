@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +59,35 @@ function severityRank(severity: string) {
   return 2;
 }
 
+function getTickerBadge(ticker: string) {
+  const normalized = ticker.trim().toUpperCase();
+  return normalized.slice(0, 3) || "TOK";
+}
+
+function getFallbackFaviconUrl(website: string) {
+  const trimmed = website.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(trimmed).hostname;
+    if (!hostname) {
+      return null;
+    }
+    return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProjectLogo(logoUrl: string | null, website: string) {
+  if (logoUrl && logoUrl.trim().length > 0) {
+    return logoUrl.trim();
+  }
+  return getFallbackFaviconUrl(website);
+}
+
 export default async function ComparePage({ searchParams }: PageProps) {
   const params = await searchParams;
 
@@ -70,6 +98,8 @@ export default async function ComparePage({ searchParams }: PageProps) {
       slug: true,
       ticker: true,
       status: true,
+      website: true,
+      logo_url: true,
       score: {
         select: {
           total_score: true,
@@ -100,6 +130,8 @@ export default async function ComparePage({ searchParams }: PageProps) {
           slug: true,
           ticker: true,
           status: true,
+          website: true,
+          logo_url: true,
           score: {
             select: {
               total_score: true,
@@ -127,6 +159,20 @@ export default async function ComparePage({ searchParams }: PageProps) {
   const comparedProjects = selectedSlugs
     .map((slug) => comparedBySlug.get(slug))
     .filter((project): project is (typeof comparedRaw)[number] => Boolean(project));
+  const topTotalScore = comparedProjects.reduce(
+    (best, project) => Math.max(best, project.score?.total_score ?? 0),
+    0,
+  );
+  const lowestRedFlagCount = comparedProjects.length
+    ? Math.min(...comparedProjects.map((project) => project.red_flags.length))
+    : 0;
+  const bestScoreByField = scoreFields.reduce((acc, field) => {
+    acc[field.key] = comparedProjects.reduce(
+      (best, project) => Math.max(best, project.score?.[field.key] ?? 0),
+      0,
+    );
+    return acc;
+  }, {} as Record<(typeof scoreFields)[number]["key"], number>);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 py-12">
@@ -138,16 +184,44 @@ export default async function ComparePage({ searchParams }: PageProps) {
       </div>
 
       <section className="surface-card rounded-lg p-5">
-        <form className="flex flex-col gap-4">
+        <form
+          key={selectedSlugs.length > 0 ? selectedSlugs.join("|") : "none"}
+          className="flex flex-col gap-4"
+        >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {allProjects.map((project) => (
               <label
                 key={project.id}
                 className="metric-tile flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-blue-100">{project.name}</p>
-                  <p className="text-faint text-xs">{project.ticker}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  {(() => {
+                    const logoUrl = resolveProjectLogo(project.logo_url, project.website);
+
+                    if (logoUrl) {
+                      return (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={logoUrl}
+                          alt={`${project.name} logo`}
+                          className="h-7 w-7 rounded-md border border-blue-400/25 bg-blue-500/10 object-cover p-0.5"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                        />
+                      );
+                    }
+
+                    return (
+                      <div className="h-7 w-7 rounded-md border border-blue-400/25 bg-blue-500/10 text-center text-[10px] font-semibold leading-7 text-blue-200">
+                        {getTickerBadge(project.ticker)}
+                      </div>
+                    );
+                  })()}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-blue-100">{project.name}</p>
+                    <p className="text-faint text-xs">{project.ticker}</p>
+                  </div>
                 </div>
                 <input
                   type="checkbox"
@@ -166,9 +240,9 @@ export default async function ComparePage({ searchParams }: PageProps) {
             >
               Compare
             </button>
-            <Link href="/compare" className="btn-ghost rounded-md px-4 py-2 text-sm">
+            <a href="/compare" className="btn-ghost rounded-md px-4 py-2 text-sm">
               Clear Selection
-            </Link>
+            </a>
             <p className="text-faint text-xs">
               {selectedSlugs.length} selected (minimum 2, maximum 4)
             </p>
@@ -201,11 +275,50 @@ export default async function ComparePage({ searchParams }: PageProps) {
             style={{ gridTemplateColumns: `repeat(${comparedProjects.length}, minmax(0, 1fr))` }}
           >
             {comparedProjects.map((project) => (
-              <article key={project.id} className="surface-card rounded-lg p-4">
+              <article
+                key={project.id}
+                className={`surface-card rounded-lg p-4 ${
+                  comparedProjects.length > 1 &&
+                  (project.score?.total_score ?? 0) === topTotalScore
+                    ? "ring-1 ring-emerald-400/50"
+                    : ""
+                }`}
+              >
                 <div className="mb-4 flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold leading-6 text-blue-50">{project.name}</h2>
-                    <p className="text-faint text-sm">{project.ticker}</p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    {(() => {
+                      const logoUrl = resolveProjectLogo(project.logo_url, project.website);
+
+                      if (logoUrl) {
+                        return (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={logoUrl}
+                            alt={`${project.name} logo`}
+                            className="h-9 w-9 shrink-0 rounded-md border border-blue-400/25 bg-blue-500/10 object-cover p-0.5"
+                            loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
+                          />
+                        );
+                      }
+
+                      return (
+                        <div className="h-9 w-9 shrink-0 rounded-md border border-blue-400/25 bg-blue-500/10 text-center text-xs font-semibold leading-9 text-blue-200">
+                          {getTickerBadge(project.ticker)}
+                        </div>
+                      );
+                    })()}
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-semibold leading-6 text-blue-50">{project.name}</h2>
+                      <p className="text-faint text-sm">{project.ticker}</p>
+                      {comparedProjects.length > 1 &&
+                        (project.score?.total_score ?? 0) === topTotalScore && (
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
+                            Best Overall
+                          </p>
+                        )}
+                    </div>
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusClass(project.status)}`}
@@ -221,12 +334,28 @@ export default async function ComparePage({ searchParams }: PageProps) {
                   <div className="mt-2 space-y-2">
                     {scoreFields.map((field) => {
                       const value = project.score?.[field.key] ?? 0;
+                      const isBestInField =
+                        comparedProjects.length > 1 &&
+                        value === bestScoreByField[field.key] &&
+                        bestScoreByField[field.key] > 0;
                       return (
-                        <div key={field.key} className="flex items-center justify-between text-sm">
+                        <div
+                          key={field.key}
+                          className={`flex items-center justify-between gap-2 rounded-md text-sm ${
+                            isBestInField ? "bg-emerald-500/10 px-2 py-1" : ""
+                          }`}
+                        >
                           <span className="text-blue-100">{field.label}</span>
-                          <span className="font-semibold text-blue-200">
-                            {value}/{field.max}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {isBestInField && (
+                              <span className="rounded-full border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+                                Best
+                              </span>
+                            )}
+                            <span className="font-semibold text-blue-200">
+                              {value}/{field.max}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
@@ -237,6 +366,19 @@ export default async function ComparePage({ searchParams }: PageProps) {
                   <h3 className="text-faint text-xs font-semibold uppercase tracking-wide">
                     Red Flags
                   </h3>
+                  <p
+                    className={`text-xs ${
+                      comparedProjects.length > 1 &&
+                      project.red_flags.length === lowestRedFlagCount
+                        ? "font-semibold text-emerald-300"
+                        : "text-faint"
+                    }`}
+                  >
+                    {project.red_flags.length} flag(s)
+                    {comparedProjects.length > 1 &&
+                      project.red_flags.length === lowestRedFlagCount &&
+                      " - Lowest in selection"}
+                  </p>
                   {project.red_flags.length === 0 && (
                     <p className="text-muted text-sm">No red flags detected.</p>
                   )}

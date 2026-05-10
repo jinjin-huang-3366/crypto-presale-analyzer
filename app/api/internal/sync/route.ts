@@ -20,22 +20,48 @@ function parseSource(input: string | null | undefined): IngestionSource | undefi
   return undefined;
 }
 
+function parseBoolean(input: string | null | undefined): boolean | undefined {
+  const normalized = input?.trim().toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized === "1" || normalized === "true" || normalized === "yes") {
+    return true;
+  }
+
+  if (normalized === "0" || normalized === "false" || normalized === "no") {
+    return false;
+  }
+
+  return undefined;
+}
+
 export async function POST(request: Request) {
   try {
-    const querySource = parseSource(new URL(request.url).searchParams.get("source"));
+    const url = new URL(request.url);
+    const querySource = parseSource(url.searchParams.get("source"));
+    const queryIncludeLive = parseBoolean(url.searchParams.get("include_live"));
 
     let bodySource: IngestionSource | undefined;
+    let bodyIncludeLive: boolean | undefined;
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
       const rawBody = await request.text();
       if (rawBody.trim().length > 0) {
-        const body = JSON.parse(rawBody) as { source?: string };
+        const body = JSON.parse(rawBody) as { source?: string; include_live?: boolean | string };
         bodySource = parseSource(body.source);
+        if (typeof body.include_live === "boolean") {
+          bodyIncludeLive = body.include_live;
+        } else if (typeof body.include_live === "string") {
+          bodyIncludeLive = parseBoolean(body.include_live);
+        }
       }
     }
 
     const result = await syncProjects({
       source: bodySource ?? querySource,
+      includeLive: bodyIncludeLive ?? queryIncludeLive ?? false,
     });
     const { syncedAt, ...payload } = result;
 
