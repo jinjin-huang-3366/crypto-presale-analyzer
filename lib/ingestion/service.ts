@@ -359,23 +359,21 @@ async function prunePlaceholderProjects() {
 }
 
 async function pruneProjectsOutsideStatusWindow(includeLive: boolean) {
-  const result = await db.project.deleteMany(
-    includeLive
-      ? {
-          where: {
-            status: {
-              notIn: ["upcoming", "live"],
-            },
-          },
-        }
-      : {
-          where: {
-            status: {
-              not: "upcoming",
-            },
+  const result = includeLive
+    ? await db.project.deleteMany({
+        where: {
+          status: {
+            notIn: ["upcoming", "live"],
           },
         },
-  );
+      })
+    : await db.project.deleteMany({
+        where: {
+          status: {
+            not: "upcoming",
+          },
+        },
+      });
 
   return result.count;
 }
