@@ -29,21 +29,23 @@ npm run dev
 
 ## Real Data Ingestion (Presale Sources)
 
-`POST /api/internal/sync` supports presale-focused ingestion via ICO Drops upcoming rounds.
+`POST /api/internal/sync` supports presale-focused ingestion via multiple real-data providers.
 
 Supported source modes:
-- `icodrops` (default): use ICO Drops upcoming token sales only
-- `auto`: try ICO Drops first, then fall back to CoinPaprika if it fails
+- `auto` (default): merge ICO Drops upcoming rounds with CoinPaprika data, with ICO Drops as primary when records overlap
+- `icodrops`: use ICO Drops upcoming token sales only
 - `coinpaprika`: fallback market source (not presale-specific)
 - `mock`: use mock source only (explicitly for testing/sample data)
 
 Environment knobs:
-- `INGESTION_SOURCE` (`icodrops` | `auto` | `coinpaprika` | `mock`)
+- `INGESTION_SOURCE` (`auto` | `icodrops` | `coinpaprika` | `mock`)
 - `INGESTION_REAL_LIMIT` (default `25`, max `100`)
 - `COINPAPRIKA_DETAILS_LIMIT` (default `8`, max `INGESTION_REAL_LIMIT`)
+- `ICODROPS_DETAILS_CONCURRENCY` (default `4`, max `12`) for official-site enrichment fetches
 
 Examples:
 ```bash
+curl -X POST "http://localhost:3000/api/internal/sync?source=auto"
 curl -X POST "http://localhost:3000/api/internal/sync?source=icodrops"
 curl -X POST "http://localhost:3000/api/internal/sync?source=coinpaprika"
 curl -X POST "http://localhost:3000/api/internal/sync?source=mock"

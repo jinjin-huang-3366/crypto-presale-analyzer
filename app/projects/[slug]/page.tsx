@@ -262,7 +262,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             rel="noreferrer"
             className="btn-ghost rounded-md px-3 py-2"
           >
-            Website
+            Official Presale Site
           </a>
           {project.twitter && (
             <a

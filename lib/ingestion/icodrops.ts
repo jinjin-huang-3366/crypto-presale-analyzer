@@ -5,7 +5,28 @@ const ICODROPS_UPCOMING_FILTER_URL =
 const ICODROPS_PROJECT_BASE_URL = "https://icodrops.com";
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
+const DEFAULT_DETAILS_CONCURRENCY = 4;
+const MAX_DETAILS_CONCURRENCY = 12;
 const REQUEST_TIMEOUT_MS = 15000;
+const SOCIAL_HOSTNAME_SUFFIXES = [
+  "twitter.com",
+  "x.com",
+  "t.me",
+  "telegram.me",
+  "discord.gg",
+  "discord.com",
+  "youtube.com",
+  "youtu.be",
+  "instagram.com",
+  "facebook.com",
+  "linkedin.com",
+  "medium.com",
+  "github.com",
+  "gitbook.io",
+  "linktr.ee",
+  "coinmarketcap.com",
+  "coingecko.com",
+];
 
 type IcoDropsFilterResponse = {
   current_page: number;
@@ -44,6 +65,13 @@ function cleanText(raw: string | null | undefined): string {
     .replace(/&gt;/g, ">")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function isHttpUrl(value: string | null | undefined): value is string {
+  if (!value) {
+    return false;
+  }
+  return value.startsWith("http://") || value.startsWith("https://");
 }
 
 function slugify(value: string): string {
@@ -139,6 +167,76 @@ function normalizeAssetUrl(value: string | null): string | null {
   return `${ICODROPS_PROJECT_BASE_URL}/${trimmed.replace(/^\/+/, "")}`;
 }
 
+function isIcoDropsUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "icodrops.com" || hostname.endsWith(".icodrops.com");
+  } catch {
+    return false;
+  }
+}
+
+function isLikelySocialUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return SOCIAL_HOSTNAME_SUFFIXES.some(
+      (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function normalizeExternalUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  if (!isHttpUrl(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function extractOfficialWebsiteFromProjectPage(html: string): string | null {
+  const anchors = html.matchAll(
+    /<a\b[^>]*href=(["'])([^"']+)\1[^>]*>([\s\S]*?)<\/a>/gi,
+  );
+
+  const candidates: string[] = [];
+
+  for (const match of anchors) {
+    const hrefRaw = match[2];
+    const innerHtml = match[3];
+    const href = normalizeExternalUrl(hrefRaw);
+
+    if (!href || isIcoDropsUrl(href)) {
+      continue;
+    }
+
+    const innerLower = innerHtml.toLowerCase();
+    if (innerLower.includes("svg-website")) {
+      return href;
+    }
+
+    if (isLikelySocialUrl(href)) {
+      continue;
+    }
+
+    if (innerLower.includes("capsule") || innerLower.includes("project-page-header__links")) {
+      candidates.push(href);
+    }
+  }
+
+  return candidates[0] ?? null;
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -164,6 +262,44 @@ async function fetchJson<T>(url: string): Promise<T> {
     return (await response.json()) as T;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function fetchText(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (compatible; crypto-presale-analyzer/1.0)",
+      },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `ICO Drops page request failed (${response.status}) for ${url}. ${body.slice(0, 200)}`,
+      );
+    }
+
+    return response.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveOfficialWebsiteFromProjectPage(projectPageUrl: string): Promise<string | null> {
+  try {
+    const html = await fetchText(projectPageUrl);
+    return extractOfficialWebsiteFromProjectPage(html);
+  } catch (error) {
+    console.warn(`ICO Drops project details fetch failed for ${projectPageUrl}`, error);
+    return null;
   }
 }
 
@@ -221,6 +357,11 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
     getCapture(/style=["'][^"']*url\(([^)]+)\)[^"']*["']/i, rowHtml);
 
   const cleanPath = projectPath.trim();
+  const projectPageUrl = normalizeAssetUrl(cleanPath);
+  if (!projectPageUrl) {
+    return null;
+  }
+
   const slugFromPath = cleanPath.replace(/^\/+|\/+$/g, "");
   const slug = slugFromPath ? slugify(slugFromPath) : slugify(name);
   const ticker = cleanText(tickerRaw).toUpperCase() || slug.slice(0, 8).toUpperCase();
@@ -237,7 +378,7 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
       ? `Upcoming token sale (${round}) listed on ICO Drops.`
       : "Upcoming token sale listed on ICO Drops.",
     status: "upcoming",
-    website: `${ICODROPS_PROJECT_BASE_URL}/${slug}/`,
+    website: projectPageUrl,
     logo_url: logoUrl,
     twitter: null,
     whitepaper: null,
@@ -248,6 +389,48 @@ function normalizeRowToProject(rowHtml: string): IngestionProjectRecord | null {
     total_supply: null,
     vesting_summary: round || null,
   };
+}
+
+async function enrichProjectsWithOfficialWebsites(
+  projects: IngestionProjectRecord[],
+): Promise<IngestionProjectRecord[]> {
+  if (projects.length === 0) {
+    return projects;
+  }
+
+  const concurrency = parsePositiveInt(
+    process.env.ICODROPS_DETAILS_CONCURRENCY,
+    DEFAULT_DETAILS_CONCURRENCY,
+    MAX_DETAILS_CONCURRENCY,
+  );
+
+  const results = [...projects];
+  let cursor = 0;
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, projects.length) }, async () => {
+      while (true) {
+        const index = cursor;
+        cursor += 1;
+
+        if (index >= projects.length) {
+          return;
+        }
+
+        const project = projects[index];
+        const officialWebsite = await resolveOfficialWebsiteFromProjectPage(project.website);
+
+        if (officialWebsite && isHttpUrl(officialWebsite)) {
+          results[index] = {
+            ...project,
+            website: officialWebsite,
+          };
+        }
+      }
+    }),
+  );
+
+  return results;
 }
 
 export async function getIcoDropsUpcomingProjects(): Promise<IngestionProjectRecord[]> {
@@ -296,5 +479,5 @@ export async function getIcoDropsUpcomingProjects(): Promise<IngestionProjectRec
     }
   }
 
-  return collected;
+  return enrichProjectsWithOfficialWebsites(collected);
 }

@@ -7,7 +7,7 @@ import { getMockIngestionProjects } from "./mock";
 import type { IngestionProjectRecord, IngestionSource } from "./types";
 
 export type SyncProjectsResult = {
-  source: "mock" | "coinpaprika" | "icodrops";
+  source: IngestionSource;
   inserted: number;
   updated: number;
   totalProcessed: number;
@@ -35,6 +35,105 @@ async function storeSyncRun(input: {
   `;
 }
 
+function normalizedText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function projectDedupeKey(project: IngestionProjectRecord) {
+  const ticker = project.ticker.trim().toUpperCase();
+  const name = normalizedText(project.name);
+  return `${ticker}|${name}`;
+}
+
+function isIcoDropsWebsite(website: string): boolean {
+  try {
+    const hostname = new URL(website.trim()).hostname.toLowerCase();
+    return hostname === "icodrops.com" || hostname.endsWith(".icodrops.com");
+  } catch {
+    return false;
+  }
+}
+
+function pickPreferredWebsite(primary: string, secondary: string): string {
+  const primaryTrimmed = primary.trim();
+  const secondaryTrimmed = secondary.trim();
+
+  if (!secondaryTrimmed) {
+    return primaryTrimmed;
+  }
+
+  if (!primaryTrimmed) {
+    return secondaryTrimmed;
+  }
+
+  if (isPlaceholderWebsite(primaryTrimmed) && !isPlaceholderWebsite(secondaryTrimmed)) {
+    return secondaryTrimmed;
+  }
+
+  if (isIcoDropsWebsite(primaryTrimmed) && !isIcoDropsWebsite(secondaryTrimmed)) {
+    return secondaryTrimmed;
+  }
+
+  return primaryTrimmed;
+}
+
+function mergeProjectRecord(
+  primary: IngestionProjectRecord,
+  secondary: IngestionProjectRecord,
+): IngestionProjectRecord {
+  return {
+    ...primary,
+    description:
+      primary.description.trim().length > 0 ? primary.description : secondary.description,
+    website: pickPreferredWebsite(primary.website, secondary.website),
+    logo_url: primary.logo_url ?? secondary.logo_url,
+    twitter: primary.twitter ?? secondary.twitter,
+    whitepaper: primary.whitepaper ?? secondary.whitepaper,
+    start_date: primary.start_date ?? secondary.start_date,
+    end_date: primary.end_date ?? secondary.end_date,
+    fdv: primary.fdv ?? secondary.fdv,
+    sale_price: primary.sale_price ?? secondary.sale_price,
+    total_supply: primary.total_supply ?? secondary.total_supply,
+    vesting_summary: primary.vesting_summary ?? secondary.vesting_summary,
+  };
+}
+
+function mergeProjectLists(
+  primary: IngestionProjectRecord[],
+  secondary: IngestionProjectRecord[],
+): IngestionProjectRecord[] {
+  const merged = [...primary];
+  const indexByKey = new Map<string, number>();
+  const indexBySlug = new Map<string, number>();
+
+  merged.forEach((project, index) => {
+    indexBySlug.set(project.slug, index);
+    indexByKey.set(projectDedupeKey(project), index);
+  });
+
+  for (const project of secondary) {
+    const slugMatchIndex = indexBySlug.get(project.slug);
+    if (slugMatchIndex !== undefined) {
+      merged[slugMatchIndex] = mergeProjectRecord(merged[slugMatchIndex], project);
+      continue;
+    }
+
+    const dedupeKey = projectDedupeKey(project);
+    const existingIndex = indexByKey.get(dedupeKey);
+
+    if (existingIndex !== undefined) {
+      merged[existingIndex] = mergeProjectRecord(merged[existingIndex], project);
+      continue;
+    }
+
+    indexBySlug.set(project.slug, merged.length);
+    indexByKey.set(dedupeKey, merged.length);
+    merged.push(project);
+  }
+
+  return merged;
+}
+
 function resolveIngestionSource(
   inputSource: IngestionSource | undefined,
 ): IngestionSource {
@@ -56,7 +155,7 @@ function resolveIngestionSource(
 }
 
 async function loadProjectsBySource(source: IngestionSource): Promise<{
-  sourceUsed: "mock" | "coinpaprika" | "icodrops";
+  sourceUsed: IngestionSource;
   projects: IngestionProjectRecord[];
   fallbackMessage: string | null;
 }> {
@@ -84,29 +183,46 @@ async function loadProjectsBySource(source: IngestionSource): Promise<{
     };
   }
 
-  try {
-    return {
-      sourceUsed: "icodrops",
-      projects: await getIcoDropsUpcomingProjects(),
-      fallbackMessage: null,
-    };
-  } catch (icodropsError) {
-    console.error("ICO Drops ingestion failed. Falling back to CoinPaprika.", icodropsError);
+  const [icodropsResult, coinpaprikaResult] = await Promise.allSettled([
+    getIcoDropsUpcomingProjects(),
+    getCoinPaprikaIngestionProjects(),
+  ]);
 
-    try {
-      return {
-        sourceUsed: "coinpaprika",
-        projects: await getCoinPaprikaIngestionProjects(),
-        fallbackMessage:
-          "ICO Drops fetch failed; sync automatically fell back to CoinPaprika source.",
-      };
-    } catch (coinpaprikaError) {
-      console.error("CoinPaprika fallback also failed.", coinpaprikaError);
-      throw new Error(
-        "Automatic real-data sync failed for both ICO Drops and CoinPaprika. Use source=mock only when test data is intentionally needed.",
-      );
-    }
+  const fallbackNotes: string[] = [];
+  let icodropsProjects: IngestionProjectRecord[] = [];
+  let coinpaprikaProjects: IngestionProjectRecord[] = [];
+
+  if (icodropsResult.status === "fulfilled") {
+    icodropsProjects = icodropsResult.value;
+  } else {
+    console.error("ICO Drops ingestion failed in auto mode.", icodropsResult.reason);
+    fallbackNotes.push("ICO Drops fetch failed.");
   }
+
+  if (coinpaprikaResult.status === "fulfilled") {
+    coinpaprikaProjects = coinpaprikaResult.value;
+  } else {
+    console.error("CoinPaprika ingestion failed in auto mode.", coinpaprikaResult.reason);
+    fallbackNotes.push("CoinPaprika fetch failed.");
+  }
+
+  if (icodropsProjects.length === 0 && coinpaprikaProjects.length === 0) {
+    throw new Error(
+      "Automatic real-data sync failed for both ICO Drops and CoinPaprika. Use source=mock only when test data is intentionally needed.",
+    );
+  }
+
+  const mergedProjects = mergeProjectLists(icodropsProjects, coinpaprikaProjects);
+  const failureNote =
+    fallbackNotes.length > 0
+      ? `${fallbackNotes.join(" ")} Auto mode merged whatever source data remained available.`
+      : null;
+
+  return {
+    sourceUsed: "auto",
+    projects: mergedProjects,
+    fallbackMessage: failureNote,
+  };
 }
 
 function isPlaceholderWebsite(website: string) {
